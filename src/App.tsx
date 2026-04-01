@@ -16,7 +16,8 @@ import {
 import * as Notifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as DocumentPicker from 'expo-document-picker';
+import { AppProvider, useAppContext } from './contexts/AppContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { 
   Plus, 
@@ -31,21 +32,11 @@ import {
   X, 
   Save, 
   Download, 
-  Upload
+  Upload, 
+  Clock,
+  Repeat,
 } from 'lucide-react-native';
-
-// Types
-interface Item {
-  id: string;
-  parentId: string | null;
-  type: 'checklist' | 'static';
-  name: string;
-  description?: string;
-  color?: string;
-  completed?: boolean;
-  createdAt: number;
-  notifications: any[];
-}
+import { Item } from './types';
 
 const APP_COLORS = [
   '#1e3a8a', '#1e40af', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa',
@@ -67,7 +58,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const ItemCard = memo(({ item, all, onDelete, onEdit, onAddSub, onToggle }: { item: Item; all: Item[]; onDelete: (id: string) => void; onEdit: (item: Item) => void; onAddSub: (id: string) => void; onToggle: (item: Item) => void }) => {
+const ItemCard = memo(({ item, all, onDelete, onEdit, onAddSub, onToggle, onNotificationPress }: { item: Item; all: Item[]; onDelete: (id: string) => void; onEdit: (item: Item) => void; onAddSub: (id: string) => void; onToggle: (item: Item) => void; onNotificationPress: (id: string) => void }) => {
   const [expanded, setExpanded] = useState(false);
   const children = all.filter((i: Item) => i.parentId === item.id);
 
@@ -84,7 +75,7 @@ const ItemCard = memo(({ item, all, onDelete, onEdit, onAddSub, onToggle }: { it
   return (
     <View style={styles.cardContainer}>
       <View style={[styles.card, item.completed && { opacity: 0.6 }]}>
-        {item.type === 'static' && <View style={[styles.colorBar, { backgroundColor: item.color }]} />}
+        {item.type === 'static' && <View style={[styles.colorBar, { backgroundColor: item.color || APP_COLORS[0] }]} />}
         
         <View style={styles.cardRow}>
           <TouchableOpacity onPress={() => onToggle(item)}>
@@ -99,7 +90,7 @@ const ItemCard = memo(({ item, all, onDelete, onEdit, onAddSub, onToggle }: { it
               <TouchableOpacity style={styles.actionIcon} onPress={() => onEdit(item)}>
                 <Edit2 color="#94a3b8" size={16} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionIcon} onPress={scheduleNotification}>
+              <TouchableOpacity style={styles.actionIcon} onPress={() => onNotificationPress(item.id)}>
                 <Bell color="#94a3b8" size={16} />
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionIcon} onPress={() => onDelete(item.id)}>
@@ -138,12 +129,18 @@ const ItemCard = memo(({ item, all, onDelete, onEdit, onAddSub, onToggle }: { it
   );
 });
 
-export default function App() {
-  const [items, setItems] = useState<Item[]>([]);
+function InnerApp() {
+  const {
+    items, loading, refresh, add, update, del, toggle, 
+    scheduleItemNotification, importBackup, exportData
+  } = useAppContext();
+
   const [activeTab, setActiveTab] = useState<'home' | 'settings'>('home');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [parentId, setParentId] = useState<string | null>(null);
+  const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<string>('');
 
   // Form State
   const [formType, setFormType] = useState<'checklist' | 'static'>('checklist');
@@ -152,7 +149,6 @@ export default function App() {
   const [formColor, setFormColor] = useState(APP_COLORS[0]);
 
   useEffect(() => {
-    loadData();
     requestPermissions();
   }, []);
 
@@ -163,26 +159,7 @@ export default function App() {
     }
   };
 
-  const loadData = async () => {
-    try {
-      const jsonValue = await AsyncStorage.getItem('hk_organizer_data');
-      if (jsonValue != null) setItems(JSON.parse(jsonValue));
-    } catch (e) {
-      console.error('Error loading data', e);
-    }
-  };
-
-  const saveData = async (newItems: Item[]) => {
-    try {
-      const jsonValue = JSON.stringify(newItems);
-      await AsyncStorage.setItem('hk_organizer_data', jsonValue);
-      setItems(newItems);
-    } catch (e) {
-      console.error('Error saving data', e);
-    }
-  };
-
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     const newItem: Item = {
       id: Math.random().toString(36).substr(2, 9),
       parentId: parentId,
@@ -194,25 +171,26 @@ export default function App() {
       createdAt: Date.now(),
       notifications: []
     };
-    const updated = [...items, newItem];
-    saveData(updated);
+    await add(newItem);
     resetForm();
   };
 
-  const handleUpdateItem = () => {
+  const handleUpdateItem = async () => {
     if (!editingItem) return;
-    const updated = items.map(i => i.id === editingItem.id ? {
-      ...i,
+    const updatedItem: Item = {
+      ...editingItem,
       name: formName,
       description: formDesc,
       color: formColor,
       type: formType
-    } : i);
-    saveData(updated);
+    };
+    await update(updatedItem);
     resetForm();
   };
 
-  const handleDeleteItem = (id: string) => {
+
+
+  const handleDeleteItem = async (id: string) => {
     Alert.alert(
       "Delete Item",
       "Are you sure you want to delete this item and its sub-items?",
@@ -221,19 +199,15 @@ export default function App() {
         { 
           text: "Delete", 
           style: "destructive",
-          onPress: () => {
-            let newItems = [...items];
-            const deleteRecursive = (pid: string) => {
-              const children = newItems.filter(i => i.parentId === pid);
-              children.forEach(child => deleteRecursive(child.id));
-              newItems = newItems.filter(i => i.id !== pid);
-            };
-            deleteRecursive(id);
-            saveData(newItems);
-          }
+          onPress: () => del(id)
         }
       ]
     );
+  };
+
+  const handleNotificationPress = (id: string) => {
+    setSelectedItemId(id);
+    setIsNotifModalOpen(true);
   };
 
   const resetForm = () => {
@@ -246,9 +220,24 @@ export default function App() {
     setParentId(null);
   };
 
-  const exportData = async () => {
+  const importData = async () => {
     try {
-      const jsonValue = JSON.stringify(items, null, 2);
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/json',
+        copyToCacheDirectory: true,
+      });
+      if (result.type === 'success') {
+        await importBackup(result.uri);
+      }
+    } catch (e) {
+      console.error('Import failed', e);
+    }
+  };
+
+  const exportDataFunc = async () => {
+    try {
+      const data = await exportData();
+      const jsonValue = JSON.stringify(data, null, 2);
       const fileUri = FileSystem.documentDirectory + 'hk_backup.json';
       await FileSystem.writeAsStringAsync(fileUri, jsonValue);
       await Sharing.shareAsync(fileUri);
@@ -273,10 +262,8 @@ export default function App() {
           setIsAddModalOpen(true);
         }}
         onAddSub={(id) => { setParentId(id); setIsAddModalOpen(true); }}
-        onToggle={(i) => {
-          const updated = items.map(it => it.id === i.id ? { ...it, completed: !it.completed } : it);
-          saveData(updated);
-        }}
+        onToggle={toggle}
+        onNotificationPress={handleNotificationPress}
       />
     );
   };
@@ -416,6 +403,9 @@ export default function App() {
                   style={styles.saveButton}
                   onPress={editingItem ? handleUpdateItem : handleAddItem}
                 >
+                  <Save color="#ffd700" size={20} />
+                  <Text style={styles.saveButtonText}>{editingItem ? "Update Item" : "Save Item"}</Text>
+                </TouchableOpacity>
                   <Save color="#ffd700" size={20} />
                   <Text style={styles.saveButtonText}>{editingItem ? "Update Item" : "Save Item"}</Text>
                 </TouchableOpacity>

@@ -6,11 +6,14 @@ interface AppContextType {
   items: Item[];
   loading: boolean;
   refresh: () => Promise<void>;
-  addItem: (item: Omit<Item, 'id'>) => Promise<string>;
-  updateItem: (item: Item) => Promise<void>;
-  deleteItem: (id: string) => Promise<void>;
-  toggleItem: (id: string, completed: boolean) => Promise<void>;
-  clearAll: () => Promise<void>;
+  add: (item: Omit<Item, 'id'>) => Promise<string>;
+  update: (item: Item) => Promise<void>;
+  del: (id: string) => Promise<void>;
+  toggle: (id: string, completed: boolean) => Promise<void>;
+  clear: () => Promise<void>;
+  scheduleItemNotification: (itemId: string, config: any) => Promise<void>;
+  importBackup: (fileUri: string) => Promise<void>;
+  exportData: () => Promise<Item[]>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);

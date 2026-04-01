@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "HK organizer",
-    "slug": "hk-organizer",
+    "slug": "react-example",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -24,6 +24,7 @@
       "eas": {
         "projectId": "43966194-6e84-43f3-832d-eef4682709de"
       }
-    }
+    },
+    "owner": "farahhk"
   }
 }

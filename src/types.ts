@@ -15,12 +15,12 @@ export interface NotificationConfig {
   title: string;
   body: string;
   trigger: {
-    date?: Date;
     hour?: number;
     minute?: number;
     repeats?: boolean;
     repeatType?: 'daily' | 'weekdays' | 'weekends' | 'custom';
     customDays?: number[]; // 0=Sun,1=Mon,...,6=Sat
+    secondsFromNow?: number; // computed trigger
   };
-  sound: string; // preset sound name
+  sound: string; // 'default', 'custom1.mp3' etc
 }
