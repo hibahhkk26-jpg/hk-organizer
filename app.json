@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "HK organizer",
+    "slug": "hk-organizer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.hk.organizer",
+      "permissions": [
+        "NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "43966194-6e84-43f3-832d-eef4682709de"
+      }
+    }
+  }
+}
