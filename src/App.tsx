@@ -58,7 +58,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const ItemCard = memo(({ item, all, onDelete, onEdit, onAddSub, onToggle, onNotificationPress }: { item: Item; all: Item[]; onDelete: (id: string) => void; onEdit: (item: Item) => void; onAddSub: (id: string) => void; onToggle: (item: Item) => void; onNotificationPress: (id: string) => void }) => {
+const ItemCard = memo(({ item, all, onDelete, onEdit, onAddSub, onToggle, onNotificationPress }: { item: Item; all: Item[]; onDelete: (id: string) => void; onEdit: (item: Item) => void; onAddSub: (id: string) => void; onToggle: (item: Item) => void; onNotificationPress?: (id: string) => void }) => {
   const [expanded, setExpanded] = useState(false);
   const children = all.filter((i: Item) => i.parentId === item.id);
 
@@ -79,7 +79,7 @@ const ItemCard = memo(({ item, all, onDelete, onEdit, onAddSub, onToggle, onNoti
         
         <View style={styles.cardRow}>
           <TouchableOpacity onPress={() => onToggle(item)}>
-            {item.completed ? <CheckCircle2 color="#22c55e" size={24} /> : <Circle color="#1e3a8a" size={24} />}
+<CheckCircle2 style={{ color: "#22c55e" }} size={24} /> : <Circle style={{ color: "#1e3a8a" }} size={24} />}
           </TouchableOpacity>
 
           <View style={styles.cardInfo}>
@@ -88,13 +88,13 @@ const ItemCard = memo(({ item, all, onDelete, onEdit, onAddSub, onToggle, onNoti
             
             <View style={styles.cardActions}>
               <TouchableOpacity style={styles.actionIcon} onPress={() => onEdit(item)}>
-                <Edit2 color="#94a3b8" size={16} />
+<Edit2 style={{ color: "#94a3b8" }} size={16} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionIcon} onPress={() => onNotificationPress(item.id)}>
-                <Bell color="#94a3b8" size={16} />
+              <TouchableOpacity style={styles.actionIcon} onPress={() => onNotificationPress?.(item.id)}>
+<Bell style={{ color: "#94a3b8" }} size={16} />
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionIcon} onPress={() => onDelete(item.id)}>
-                <Trash2 color="#ef4444" size={16} />
+<Trash2 style={{ color: "#ef4444" }} size={16} />
               </TouchableOpacity>
               <TouchableOpacity style={[styles.actionIcon, { marginLeft: 'auto' }]} onPress={() => onAddSub(item.id)}>
                 <Plus color="#22c55e" size={16} />
@@ -262,7 +262,7 @@ function InnerApp() {
           setIsAddModalOpen(true);
         }}
         onAddSub={(id) => { setParentId(id); setIsAddModalOpen(true); }}
-        onToggle={toggle}
+        onToggle={(item) => toggle(item.id, !item.completed)}
         onNotificationPress={handleNotificationPress}
       />
     );
@@ -314,11 +314,11 @@ function InnerApp() {
             <ScrollView style={styles.settingsView}>
               <View style={styles.settingsCard}>
                 <Text style={styles.cardTitle}>Data Management</Text>
-                <TouchableOpacity style={styles.actionButton} onPress={exportData}>
+<TouchableOpacity style={styles.actionButton} onPress={exportDataFunc}>
                   <Download color="#1e3a8a" size={20} />
                   <Text style={styles.actionButtonText}>Backup Data (Export)</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#fef9c3', marginTop: 12 }]}>
+                <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#fef9c3', marginTop: 12 }]} onPress={importData}>
                   <Upload color="#a16207" size={20} />
                   <Text style={[styles.actionButtonText, { color: '#a16207' }]}>Restore Data (Import)</Text>
                 </TouchableOpacity>
@@ -399,13 +399,10 @@ function InnerApp() {
                   </>
                 )}
 
-                <TouchableOpacity 
+              <TouchableOpacity 
                   style={styles.saveButton}
                   onPress={editingItem ? handleUpdateItem : handleAddItem}
                 >
-                  <Save color="#ffd700" size={20} />
-                  <Text style={styles.saveButtonText}>{editingItem ? "Update Item" : "Save Item"}</Text>
-                </TouchableOpacity>
                   <Save color="#ffd700" size={20} />
                   <Text style={styles.saveButtonText}>{editingItem ? "Update Item" : "Save Item"}</Text>
                 </TouchableOpacity>
